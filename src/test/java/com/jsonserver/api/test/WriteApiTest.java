@@ -1,10 +1,13 @@
 package com.jsonserver.api.test;
 
+import com.jsonserver.api.test.pojo.Post;
 import com.thedeanda.lorem.LoremIpsum;
+import io.restassured.http.ContentType;
 import org.json.simple.JSONObject;
 import org.testng.annotations.Test;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Objects;
 
 import static io.restassured.RestAssured.given;
@@ -75,7 +78,7 @@ public class WriteApiTest extends BaseTest{
         jsonObject.put("title", Title);
         jsonObject.put("author",Author);
 
-        given()
+         Post post = given()
                 .header("Content-Type","application/json")
                 .body(jsonObject)
                 .log().uri()
@@ -87,7 +90,14 @@ public class WriteApiTest extends BaseTest{
                 .log().body()
                 .body("title", equalTo(Title))
                 .body("author",equalTo(Author))
-                .body("id", notNullValue());
+                .body("id", notNullValue())
+                .extract().jsonPath().getObject("", Post.class);
+        System.out.println("===========================================================");
+        System.out.println(post.getId());
+        System.out.println(post.getTitle());
+        System.out.println(post.getAuthor());
+
+
     }
 
     @Test
@@ -218,4 +228,137 @@ public class WriteApiTest extends BaseTest{
 
 
     }
+
+    //using  Pojo class
+
+    @Test
+    public void createPostUsingPojoWithJSONShouldSucceed(){
+        String Title = LoremIpsum.getInstance().getTitle(2);
+        String Author = LoremIpsum.getInstance().getName();
+
+        given()
+                .header("Content-Type","application/json")
+                .body(new Post(Title,Author))
+                .log().uri()
+                .log().body()
+                .when()
+                .post("/posts")
+                .then()
+                .statusCode(201)
+                .log().body()
+                .body("title", equalTo(Title))
+                .body("author",equalTo(Author))
+                .body("id", notNullValue());
+    }
+
+
+    @Test
+    public void updatePostUsingPojoShouldSucceed(){
+        String Title = LoremIpsum.getInstance().getTitle(2);
+        String Author = LoremIpsum.getInstance().getName();
+
+
+        Long Id = given()
+                .header("Content-Type","application/json")
+                .body(new Post(Title,Author))
+                .log().uri()
+                .log().body()
+                .when()
+                .post("/posts")
+                .then()
+                .statusCode(201)
+                .log().body()
+                .body("title", equalTo(Title))
+                .body("author",equalTo(Author))
+                .body("id", notNullValue())
+                .extract().jsonPath().getObject("", Post.class)
+                .getId();
+
+//Now update the json
+        Title = LoremIpsum.getInstance().getTitle(2);
+        Author = LoremIpsum.getInstance().getName();
+        given()
+                .header("Content-Type","application/json")
+                .body(new Post(Title,Author))
+                .log().uri()
+                .log().body()
+                .when()
+                .put("/posts/"+Id)
+                .then()
+                .statusCode(200)
+                .log().body()
+                .body("title", equalTo(Title))
+                .body("author",equalTo(Author))
+                .body("id", notNullValue());
+
+    }
+
+    @Test
+    public void updatePostListUsingPojoShouldSucceed(){
+        List<Post> postList= given()
+                .contentType(ContentType.JSON)
+                .log().uri()
+                .when()
+                .get("/posts")
+                .then()
+                .statusCode(200)
+//                .log().body()
+                .extract().jsonPath().getList("", Post.class);
+//        System.out.println("===========================================");
+//
+//        for(Post post: postList){
+//            System.out.println(post.getId());
+//            System.out.println(post.getTitle());
+//            System.out.println(post.getAuthor());
+//            System.out.println("===========================================");
+//        }
+        Long id = postList.get(0).getId();
+
+        String Title = LoremIpsum.getInstance().getTitle(2);
+        String Author = LoremIpsum.getInstance().getName();
+        given()
+                .header("Content-Type","application/json")
+                .body(new Post(Title,Author))
+                .log().uri()
+                .log().body()
+                .when()
+                .put("/posts/"+id)
+                .then()
+                .statusCode(200)
+                .log().body()
+                .body("title", equalTo(Title))
+                .body("author",equalTo(Author))
+                .body("id", notNullValue());
+
+    }
+
+
+    @Test
+    public void deletePostFormListUsingPojoShouldSucceed(){
+        String Title = LoremIpsum.getInstance().getTitle(2);
+        String Author = LoremIpsum.getInstance().getName();
+
+        List<Post> postList= given()
+                .contentType(ContentType.JSON)
+                .log().uri()
+                .when()
+                .get("/posts")
+                .then()
+                .statusCode(200)
+                .log().body()
+                .extract().jsonPath().getList("", Post.class);
+        Long Id = postList.get(0).getId();
+
+
+        given()
+                .header("Content-Type","application/json")
+                .log().uri()
+                .when()
+                .delete("/posts/"+Id)
+                .then()
+                .statusCode(200)
+                .log().body();
+    }
+
+
 }
